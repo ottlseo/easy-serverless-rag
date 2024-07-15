@@ -13,14 +13,15 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
     super(scope, id, props);
 
     // S3 버킷 생성
+    const randomstr = Math.random().toString(36).substring(2,8);
     const bucket = new s3.Bucket(this, 'KnowledgeBaseFilesBucket', {
-        bucketName: 'knowledge-base-files-bucket-yoonseo-demogo',
+        bucketName: `knowledge-base-bucket-demogo-${randomstr}`,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       });
   
     const knowledgeBase = new bedrock.KnowledgeBase(
         this,
-        "bedrock-knowledge-base-yoonseo-demogo",
+        "bedrock-knowledge-base-demogo",
         {
             embeddingsModel: bedrock.BedrockFoundationModel.TITAN_EMBED_TEXT_V1,
         }
@@ -28,11 +29,11 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
 
     const dataSource = new bedrock.S3DataSource(
         this, 
-        "data-source-yoonseo-demogo",
+        "data-source-demogo",
         {
             bucket: bucket,
             knowledgeBase: knowledgeBase,
-            dataSourceName: "data-source-yoonseo-demogo",
+            dataSourceName: "data-source-demogo",
             chunkingStrategy: bedrock.ChunkingStrategy.FIXED_SIZE,
             maxTokens: 500,
             overlapPercentage: 20,
@@ -46,14 +47,15 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
       const lambdaIngestionJob = new lambda.Function(this, "IngestionJob", {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "index.handler",
-        code: lambda.Code.fromAsset("./lib/IngestJob"),
+        code: lambda.Code.fromAsset("./lib/lambdas/IngestJob"),
         timeout: cdk.Duration.minutes(5),
         environment: {
           KNOWLEDGE_BASE_ID: knowledgeBase.knowledgeBaseId,
           DATA_SOURCE_ID: dataSource.dataSourceId,
         },
       });
-  
+
+      // S3 event 발생 시 Lambda trigger
       lambdaIngestionJob.addEventSource(s3PutEventSource);
   
       lambdaIngestionJob.addToRolePolicy(
@@ -66,7 +68,7 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
       const lambdaQuery = new lambda.Function(this, "Query", {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "index.handler",
-        code: lambda.Code.fromAsset("./lib/queryKnowledgeBase"),
+        code: lambda.Code.fromAsset("./lib/lambdas/queryKnowledgeBase"),
         timeout: cdk.Duration.minutes(5),
         environment: {
           KNOWLEDGE_BASE_ID: knowledgeBase.knowledgeBaseId,
@@ -136,7 +138,7 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
   };
     // // OpenSearch Serverless 도메인 생성
     // const openSearchDomain = new opensearch.Domain(this, 'OpenSearchDomain', {
-    //   domainName: 'bedrock-knowledge-base-domain-yoonseo-demogo',
+    //   domainName: 'bedrock-knowledge-base-domain-demogo',
     // });
 
     // // IAM 역할 생성 및 관리자 권한 부여
@@ -153,7 +155,7 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
     //   role: role,
     //   environment: {
     //     BUCKET_NAME: bucket.bucketName,
-    //     KNOWLEDGE_BASE_ID: 'your-knowledge-base-id-yoonseo-demogo',
+    //     KNOWLEDGE_BASE_ID: 'your-knowledge-base-id-demogo',
     //   },
     // });
 
@@ -162,7 +164,7 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
 
     // Bedrock Knowledge Base 생성
     // const knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'KnowledgeBase', {
-    //     name: "knowledgebase-test-yoonseo-demogo",
+    //     name: "knowledgebase-test-demogo",
     //     description: "",
     //     roleArn: role.roleArn,
 
