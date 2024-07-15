@@ -55,7 +55,7 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
         },
       });
 
-      // S3 event 발생 시 Lambda trigger
+      // S3 event 발생 시 IngestJob lambda trigger
       lambdaIngestionJob.addEventSource(s3PutEventSource);
   
       lambdaIngestionJob.addToRolePolicy(
@@ -64,7 +64,14 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
           resources: [knowledgeBase.knowledgeBaseArn],
         })
       );
-  
+ 
+      // Query lambda 
+      const bedrockAccessPolicy = new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["bedrock:*"],
+        resources: ["*"],
+      }); 
+
       const lambdaQuery = new lambda.Function(this, "Query", {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "index.handler",
@@ -73,10 +80,11 @@ export class BedrockKnowledgeBaseStack extends cdk.Stack {
         environment: {
           KNOWLEDGE_BASE_ID: knowledgeBase.knowledgeBaseId,
         },
+        initialPolicy: [bedrockAccessPolicy], 
       });
  
     // API Gateway 생성
-    const api = new apigw.RestApi(this, "AiTutorAPI", {
+    const api = new apigw.RestApi(this, "RAGAPI", {
         restApiName: "RAGAPI",
         description: "RAG API using Bedrock Knowledge Base created by CDK",
         defaultCorsPreflightOptions: {
