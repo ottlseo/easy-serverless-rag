@@ -1,4 +1,4 @@
-FROM amazon/aws-lambda-python:3.8
+FROM amazon/aws-lambda-python:3.10
 
 RUN /var/lang/bin/python3.8 -m pip install --upgrade pip
 
@@ -9,6 +9,8 @@ RUN git clone https://github.com/ottlseo/easy-serverless-rag.git
 ENV PIP_DEFAULT_TIMEOUT=600
 
 WORKDIR easy-serverless-rag 
+
+RUN python -m venv /app/venv
 
 RUN pip install -r requirements.txt
 
