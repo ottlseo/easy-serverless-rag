@@ -6,7 +6,10 @@ RUN yum install git -y
 
 RUN git clone https://github.com/ottlseo/easy-serverless-rag.git
 
+ENV PIP_DEFAULT_TIMEOUT=600
+
 RUN pip install -r easy-serverless-rag/requirements.txt
+
 RUN pip install "unstructured[all-docs]"
 
 RUN cp easy-serverless-rag/lambda_function.py /var/task/
