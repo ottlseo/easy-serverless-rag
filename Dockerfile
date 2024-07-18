@@ -12,7 +12,7 @@ WORKDIR easy-serverless-rag
 
 RUN pip install -r requirements.txt
 
-RUN pip install "unstructured[all-docs]"
+RUN pip install -U "unstructured[all-docs]==0.13.2"
 
 RUN cp lambda_function.py /var/task/
 
