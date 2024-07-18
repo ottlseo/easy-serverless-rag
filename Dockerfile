@@ -2,6 +2,8 @@ FROM amazon/aws-lambda-python:3.10
 
 RUN /var/lang/bin/python3.10 -m pip install --upgrade pip
 
+RUN yum -y update
+
 RUN yum install git -y
 
 RUN git clone https://github.com/ottlseo/easy-serverless-rag.git
