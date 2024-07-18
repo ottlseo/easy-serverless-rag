@@ -21,7 +21,6 @@ from pdf2image import convert_from_path
 # S3 클라이언트 생성
 s3 = boto3.client('s3')
 
-# 버킷 이름과 파일 키 설정
 bucket_name = 'demogo-metadata-source-bucket'
 file_key = 'school_edu_guide.pdf'
 image_path = "/tmp/fig" # "./fig"
@@ -31,6 +30,7 @@ table_by_llama_parse = False
 table_by_pymupdf = False
 table_as_image = True
 
+# =============== FUNCTIONS =============== #
 def add_python_path(module_path):
     if os.path.abspath(module_path) not in sys.path:
         sys.path.append(os.path.abspath(module_path))
@@ -194,6 +194,8 @@ def image_to_base64(image_path):
         encoded_string = base64.b64encode(image_file.read())
     return encoded_string.decode('utf-8')
 
+
+# =============== HANDLER =============== #
 def lambda_handler(event, context):
 
     boto3_bedrock = get_bedrock_client(
@@ -244,13 +246,10 @@ def lambda_handler(event, context):
     images = glob(os.path.join(image_path, "*"))
 
     for doc in docs:
-
         category = doc.metadata["category"]
-
         if category == "Table": tables.append(doc)
         elif category == "Image": images.append(doc)
-        else: texts.append(doc)
-        
+        else: texts.append(doc) 
         images = glob(os.path.join(image_path, "*"))
 
     print (f' # texts: {len(texts)} \n # tables: {len(tables)} \n # images: {len(images)}') 
@@ -306,7 +305,7 @@ def lambda_handler(event, context):
     #     images = glob(os.path.join(image_path, "*"))
     #     print (f'images: {images}')
 
-###### ===== FOR TEST ===== ######
+# =============== FOR TEST =============== #
     prompt = event['prompt']
     response_text = llm_text.invoke(prompt) #프롬프트에 응답 반환
     print(response_text.content)
