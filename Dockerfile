@@ -10,7 +10,11 @@ ENV PIP_DEFAULT_TIMEOUT=600
 
 WORKDIR easy-serverless-rag 
 
-RUN python -m venv /app/venv
+RUN sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+RUN yum -y update
+
+RUN yum install -y poppler-utils
 
 RUN pip install -r requirements.txt
 
