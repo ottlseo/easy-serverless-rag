@@ -1,6 +1,12 @@
+pip==24.1.1
+awscli==1.33.16
+
 botocore==1.34.134 
 boto3==1.34.134 
 langchain==0.2.6 
 langchain-community==0.2.6  
 langchain_aws==0.1.8 
 anthropic==0.30.0 
+
+pypdf==4.2.0
+pdf2image==1.17.0
