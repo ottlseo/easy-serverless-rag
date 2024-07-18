@@ -6,7 +6,6 @@ pip3 install sagemaker==2.224.1 -t .
 pip3 install langchain==0.2.6 -t .
 pip3 install langchain-community==0.2.6 -t . 
 pip3 install langchain_aws==0.1.8 -t .
-# pip3 install transformers==4.41.2 -t .
 pip3 install librosa==0.10.2.post1 -t .
 pip3 install opensearch-py==2.6.0 -t .
 pip3 install sqlalchemy -t .

@@ -2,41 +2,28 @@ import sys, os
 import json
 import boto3
 from botocore.config import Config
-
 from typing import Optional
-from pprint import pprint
-# from termcolor import colored
-# from utils import bedrock, print_ww
-# from utils.bedrock import bedrock_info
-from langchain_aws import ChatBedrock
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.embeddings import BedrockEmbeddings
 import shutil
 from glob import glob
-# from utils.common_utils import to_pickle, load_pickle
-from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
-from langchain_community.document_loaders import UnstructuredFileLoader, UnstructuredAPIFileLoader
-
-import time
 import pickle
-import random
-import logging
-import functools
-from IPython.display import Markdown, HTML, display
-
 import cv2
 import math
 import base64
-import numpy as np
+from langchain_aws import ChatBedrock
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.embeddings import BedrockEmbeddings
+from langchain_community.document_loaders import UnstructuredFileLoader
+from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
+import fitz
+from PIL import Image
+import io
+
 from pdf2image import convert_from_path
 
 def to_pickle(obj, path):
     # with open(file=path, mode="wb") as f:
     #     pickle.dump(obj, f)
     # print (f'To_PICKLE: {path}')
-    
-    # S3에 저장하는 코드로 변경 ---
    
     s3 = boto3.client('s3') 
     pickled_docs = pickle.dumps(obj)
@@ -50,55 +37,23 @@ def to_pickle(obj, path):
 
     
 def load_pickle(path):
-    
+    # with open(file=path, mode="rb") as f:
+    #     obj=pickle.load(f)
+    # print (f'Load from {path}')
+
     s3 = boto3.client('s3') 
     bucket_name = 'demogo-metadata-source-bucket'
     pickle_obj = s3.Object(bucket_name, path)
     pickled_docs = pickle_obj.get()['Body'].read()
     
     obj = pickle.loads(pickled_docs)
-    
-    # with open(file=path, mode="rb") as f:
-    #     obj=pickle.load(f)
-
-    # print (f'Load from {path}')
-
     return obj
 
-def to_markdown(obj, path):
-
-    with open(file=path, mode="w") as f:
-        f.write(obj)
-
-    print (f'To_Markdown: {path}')
-    
-def print_html(input_html):
-
-    html_string=""
-    html_string = html_string + input_html
-
-    display(HTML(html_string))
-
-
 def get_bedrock_client(
-    assumed_role: Optional[str] = None,
-    endpoint_url: Optional[str] = None,
-    region: Optional[str] = None,
+    assumed_role: Optional[str] = None, # Optional - If not specified, the current active credentials will be used
+    endpoint_url: Optional[str] = None, # Optional - If setting this, it should usually include the protocol (i.e. "https://...")
+    region: Optional[str] = None, # Optional - If not specified, AWS_REGION or AWS_DEFAULT_REGION environment variable will be used
 ):
-    """Create a boto3 client for Amazon Bedrock, with optional configuration overrides
-
-    Parameters
-    ----------
-    assumed_role :
-        Optional ARN of an AWS IAM role to assume for calling the Bedrock service. If not
-        specified, the current active credentials will be used.
-    endpoint_url :
-        Optional override for the Bedrock service API Endpoint. If setting this, it should usually
-        include the protocol i.e. "https://..."
-    region :
-        Optional name of the AWS Region in which the service should be called (e.g. "us-east-1").
-        If not specified, AWS_REGION or AWS_DEFAULT_REGION environment variable will be used.
-    """
     if region is None:
         target_region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION"))
     else:
@@ -148,7 +103,6 @@ def get_bedrock_client(
     print(bedrock_client._endpoint)
     return bedrock_client
 
-
 class bedrock_info():
 
     _BEDROCK_MODEL_INFO = {
@@ -190,7 +144,6 @@ class bedrock_info():
 
         return cls._BEDROCK_MODEL_INFO[model_name]
 
-
 def add_python_path(module_path):
     if os.path.abspath(module_path) not in sys.path:
         sys.path.append(os.path.abspath(module_path))
@@ -208,8 +161,7 @@ boto3_bedrock = get_bedrock_client(
     endpoint_url=os.environ.get("BEDROCK_ENDPOINT_URL", None),
     region=os.environ.get("AWS_DEFAULT_REGION", None),
 )
-
-pprint (bedrock_info.get_list_fm_models(verbose=False))
+print (bedrock_info.get_list_fm_models(verbose=False))
 
 # Step 2. Titan Embedding 및 LLM 인 Claude-v3-sonnet 모델 로딩
 llm_text = ChatBedrock(
@@ -230,7 +182,7 @@ llm_emb = BedrockEmbeddings(
     client=boto3_bedrock,
     model_id=bedrock_info.get_model_id(model_name="Titan-Embeddings-G1") #Titan-Text-Embeddings-V2
 )
-dimension = 1536 #1024
+dimension = 1536 # 1024
 print("Bedrock Embeddings Model Loaded")
 
 # 3. 데이터 준비
@@ -275,13 +227,10 @@ images = glob(os.path.join(image_path, "*"))
 tables, texts = [], []
 
 for doc in docs:
-
     category = doc.metadata["category"]
-
     if category == "Table": tables.append(doc)
     elif category == "Image": images.append(doc)
     else: texts.append(doc)
-    
     images = glob(os.path.join(image_path, "*"))
 
 print (f' # texts: {len(texts)} \n # tables: {len(tables)} \n # images: {len(images)}')
