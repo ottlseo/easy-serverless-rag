@@ -12,6 +12,6 @@ RUN pip install -r easy-serverless-rag/requirements.txt
 
 RUN pip install "unstructured[all-docs]"
 
-RUN cp easy-serverless-rag/lambda_function.py /var/task/
+RUN cp easy-serverless-rag/test.py /var/task/
 
-CMD ["lambda_function.handler"]
+CMD ["test.lambda_handler"]
