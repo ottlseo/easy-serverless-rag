@@ -16,7 +16,6 @@ anthropic==0.30.0
 faiss-cpu==1.8.0.post1
 jq==1.7.0
 pydantic==2.7.4
-sudo yum install -y poppler-utils
 lxml==5.2.2
 kaleido==0.2.1
 uvicorn==0.30.1
