@@ -10,7 +10,7 @@ ENV PIP_DEFAULT_TIMEOUT=600
 
 WORKDIR easy-serverless-rag 
 
-RUN sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+RUN rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
 RUN yum -y update
 
