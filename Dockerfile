@@ -8,10 +8,12 @@ RUN git clone https://github.com/ottlseo/easy-serverless-rag.git
 
 ENV PIP_DEFAULT_TIMEOUT=600
 
-RUN pip install -r easy-serverless-rag/requirements.txt
+WORKDIR easy-serverless-rag 
+
+RUN pip install -r requirements.txt
 
 RUN pip install "unstructured[all-docs]"
 
-RUN cp easy-serverless-rag/test.py /var/task/
+RUN cp lambda_function.py /var/task/
 
-CMD ["test.lambda_handler"]
+CMD ["lambda_function.lambda_handler"]
