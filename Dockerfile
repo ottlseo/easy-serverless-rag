@@ -4,11 +4,11 @@ RUN /var/lang/bin/python3.10 -m pip install --upgrade pip
 
 RUN yum install git -y
 
-RUN git clone https://github.com/ottlseo/easy-serverless-rag.git
+RUN git clone https://github.com/ottlseo/multimodal-rag-made-easy.git
 
 ENV PIP_DEFAULT_TIMEOUT=600
 
-WORKDIR easy-serverless-rag 
+WORKDIR multimodal-rag-made-easy
 
 RUN rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
