@@ -23,10 +23,15 @@ def custom_file_uploader():
             disabled=st.session_state.document_type=="Use sample document"
             )
         if uploaded_file:
-            with st.spinner("문서를 S3에 업로드하는 중입니다."):
-                upload_result = upload_file_to_custom_docs_bucket(uploaded_file)
-                # TODO: embedding_result 받아오는 코드 추가
-            st.markdown('(임시 출력) 파일 업로드 완료: {}'.format(upload_result)) # TODO: delete it
+            if st.session_state.document_type == "Use sample document":
+                uploaded_file=None
+            else: 
+                with st.spinner("문서를 S3에 업로드하는 중입니다."):
+                    if st.session_state.document_obj_name == None:
+                        upload_result = upload_file_to_custom_docs_bucket(uploaded_file)
+                        st.session_state.document_obj_name = upload_result
+                    # TODO: embedding_result 받아오는 코드 추가
+                st.markdown(f'(임시 출력) 파일 업로드 완료: {st.session_state.document_obj_name}') # TODO: delete it
     
 ####################### Application ###############################
 st.set_page_config(layout="wide")
@@ -46,6 +51,8 @@ with st.popover("👉 **멀티모달 아키텍처 확인하기**"):
 # Store the initial value of widgets in session state
 if "document_type" not in st.session_state:
     st.session_state.document_type = "Upload your document"
+if "document_obj_name" not in st.session_state:
+    st.session_state.document_obj_name = None
 
 with st.sidebar: # Sidebar 모델 옵션
     # st.markdown('''# 🎉 이용 가이드 ''')
