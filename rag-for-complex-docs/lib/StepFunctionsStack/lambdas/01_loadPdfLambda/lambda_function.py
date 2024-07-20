@@ -205,14 +205,14 @@ def lambda_handler(event, context):
     )
     llm_text, llm_emb, dimension = load_llms(boto3_bedrock)
     
-    # if os.path.isdir(image_path): shutil.rmtree(image_path)
-    # os.mkdir(image_path)
+    if os.path.isdir(image_path): shutil.rmtree(image_path)
+    os.mkdir(image_path)
     
     # S3 파일에 대한 URL 생성
     file_path = get_file_path_from_s3()
     
-    # if os.path.isdir(image_path): shutil.rmtree(image_path)
-    # os.mkdir(image_path)
+    if os.path.isdir(image_path): shutil.rmtree(image_path)
+    os.mkdir(image_path)
 
     loader = UnstructuredURLLoader(
         urls=[file_path],
@@ -239,12 +239,71 @@ def lambda_handler(event, context):
     )
     docs = loader.load()
     
+    to_pickle(docs, file_key)
+    docs = load_pickle(file_key)
 
-# =============== FOR TEST =============== #
-    prompt = event['prompt']
-    response_text = llm_text.invoke(prompt) #프롬프트에 응답 반환
-    print(response_text.content)
-    print("\n\n\nDONE\n")
+    tables, texts = [], []
+    images = glob(os.path.join(image_path, "*"))
+
+    for doc in docs:
+        category = doc.metadata["category"]
+        if category == "Table": tables.append(doc)
+        elif category == "Image": images.append(doc)
+        else: texts.append(doc) 
+        images = glob(os.path.join(image_path, "*"))
+
+    print (f' # texts: {len(texts)} \n # tables: {len(tables)} \n # images: {len(images)}') 
+
+    # if table_as_image:
+    #     image_tmp_path = os.path.join(image_path, "tmp")
+    #     if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
+    #     os.mkdir(image_tmp_path)
+        
+    #     # from pdf to image
+    #     pages = convert_from_path(file_path)
+    #     for i, page in enumerate(pages):
+    #         print (f'pdf page {i}, size: {page.size}')    
+    #         page.save(f'{image_tmp_path}/{str(i+1)}.jpg', "JPEG")
+
+    #     print ("==")
+
+    #     #table_images = []
+    #     for idx, table in enumerate(tables):
+    #         points = table.metadata["coordinates"]["points"]
+    #         page_number = table.metadata["page_number"]
+    #         layout_width, layout_height = table.metadata["coordinates"]["layout_width"], table.metadata["coordinates"]["layout_height"]
+
+    #         img = cv2.imread(f'{image_tmp_path}/{page_number}.jpg')
+    #         crop_img = img[math.ceil(points[0][1]):math.ceil(points[1][1]), \
+    #                     math.ceil(points[0][0]):math.ceil(points[3][0])]
+    #         table_image_path = f'{image_path}/table-{idx}.jpg'
+    #         cv2.imwrite(table_image_path, crop_img)
+    #         #table_images.append(table_image_path)
+
+    #         print (f'unstructured width: {layout_width}, height: {layout_height}')
+    #         print (f'page_number: {page_number}')
+    #         print ("==")
+
+    #         width, height, _ = crop_img.shape
+    #         image_token = width*height/750
+    #         print (f'image: {table_image_path}, shape: {img.shape}, image_token_for_claude3: {image_token}' )
+
+    #         ## Resize image
+    #         if image_token > 1500:
+    #             resize_img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+    #             print("   - resize_img.shape = {0}".format(resize_img.shape))
+    #             table_image_resize_path = table_image_path.replace(".jpg", "-resize.jpg")
+    #             cv2.imwrite(table_image_resize_path, resize_img)
+    #             os.remove(table_image_path)
+    #             table_image_path = table_image_resize_path
+
+    #         img_base64 = image_to_base64(table_image_path)
+    #         table.metadata["image_base64"] = img_base64
+
+    #     if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
+    #     #print (f'table_images: {table_images}')
+    #     images = glob(os.path.join(image_path, "*"))
+    #     print (f'images: {images}')
 
     return {
         'statusCode': 200,
