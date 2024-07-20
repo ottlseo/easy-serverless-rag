@@ -50,59 +50,59 @@ def get_file_path_from_s3():
     )
     return s3url 
 
-def get_bedrock_client(
-    assumed_role: Optional[str] = None, # Optional - If not specified, the current active credentials will be used
-    endpoint_url: Optional[str] = None, # Optional - If setting this, it should usually include the protocol (i.e. "https://...")
-    region: Optional[str] = None, # Optional - If not specified, AWS_REGION or AWS_DEFAULT_REGION environment variable will be used
-):
-    if region is None:
-        target_region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION"))
-    else:
-        target_region = region
+# def get_bedrock_client(
+#     assumed_role: Optional[str] = None, # Optional - If not specified, the current active credentials will be used
+#     endpoint_url: Optional[str] = None, # Optional - If setting this, it should usually include the protocol (i.e. "https://...")
+#     region: Optional[str] = None, # Optional - If not specified, AWS_REGION or AWS_DEFAULT_REGION environment variable will be used
+# ):
+#     if region is None:
+#         target_region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION"))
+#     else:
+#         target_region = region
 
-    print(f"Create new client\n  Using region: {target_region}")
-    session_kwargs = {"region_name": target_region}
-    client_kwargs = {**session_kwargs}
+#     print(f"Create new client\n  Using region: {target_region}")
+#     session_kwargs = {"region_name": target_region}
+#     client_kwargs = {**session_kwargs}
 
-    profile_name = os.environ.get("AWS_PROFILE")
-    print(f"  Using profile: {profile_name}")
-    if profile_name:
-        print(f"  Using profile: {profile_name}")
-        session_kwargs["profile_name"] = profile_name
+#     profile_name = os.environ.get("AWS_PROFILE")
+#     print(f"  Using profile: {profile_name}")
+#     if profile_name:
+#         print(f"  Using profile: {profile_name}")
+#         session_kwargs["profile_name"] = profile_name
 
-    retry_config = Config(
-        region_name=target_region,
-        retries={
-            "max_attempts": 10,
-            "mode": "standard",
-        },
-    )
-    session = boto3.Session(**session_kwargs)
+#     retry_config = Config(
+#         region_name=target_region,
+#         retries={
+#             "max_attempts": 10,
+#             "mode": "standard",
+#         },
+#     )
+#     session = boto3.Session(**session_kwargs)
 
-    if assumed_role:
-        print(f"  Using role: {assumed_role}", end='')
-        sts = session.client("sts")
-        response = sts.assume_role(
-            RoleArn=str(assumed_role),
-            RoleSessionName="langchain-llm-1"
-        )
-        print(" ... successful!")
-        client_kwargs["aws_access_key_id"] = response["Credentials"]["AccessKeyId"]
-        client_kwargs["aws_secret_access_key"] = response["Credentials"]["SecretAccessKey"]
-        client_kwargs["aws_session_token"] = response["Credentials"]["SessionToken"]
+#     if assumed_role:
+#         print(f"  Using role: {assumed_role}", end='')
+#         sts = session.client("sts")
+#         response = sts.assume_role(
+#             RoleArn=str(assumed_role),
+#             RoleSessionName="langchain-llm-1"
+#         )
+#         print(" ... successful!")
+#         client_kwargs["aws_access_key_id"] = response["Credentials"]["AccessKeyId"]
+#         client_kwargs["aws_secret_access_key"] = response["Credentials"]["SecretAccessKey"]
+#         client_kwargs["aws_session_token"] = response["Credentials"]["SessionToken"]
 
-    if endpoint_url:
-        client_kwargs["endpoint_url"] = endpoint_url
+#     if endpoint_url:
+#         client_kwargs["endpoint_url"] = endpoint_url
 
-    bedrock_client = session.client(
-        service_name="bedrock-runtime",
-        config=retry_config,
-        **client_kwargs
-    )
+#     bedrock_client = session.client(
+#         service_name="bedrock-runtime",
+#         config=retry_config,
+#         **client_kwargs
+#     )
 
-    print("boto3 Bedrock client successfully created!")
-    print(bedrock_client._endpoint)
-    return bedrock_client
+#     print("boto3 Bedrock client successfully created!")
+#     print(bedrock_client._endpoint)
+#     return bedrock_client
 
 class bedrock_info():
 
@@ -145,65 +145,65 @@ class bedrock_info():
 
         return cls._BEDROCK_MODEL_INFO[model_name]
 
-def to_pickle(obj, path):
-    # with open(file=path, mode="wb") as f:
-    #     pickle.dump(obj, f)
-    # print (f'To_PICKLE: {path}')
+# def to_pickle(obj, path):
+#     # with open(file=path, mode="wb") as f:
+#     #     pickle.dump(obj, f)
+#     # print (f'To_PICKLE: {path}')
    
-    pickled_docs = pickle.dumps(obj)
-    s3.put_object(
-        Bucket=bucket_name,
-        Key=path,
-        Body=pickled_docs
-    )
-    print(f"Pickle file uploaded to {bucket_name}/{path}")
+#     pickled_docs = pickle.dumps(obj)
+#     s3.put_object(
+#         Bucket=bucket_name,
+#         Key=path,
+#         Body=pickled_docs
+#     )
+#     print(f"Pickle file uploaded to {bucket_name}/{path}")
     
-def load_pickle(path):
-    # with open(file=path, mode="rb") as f:
-    #     obj=pickle.load(f)
-    # print (f'Load from {path}')
+# def load_pickle(path):
+#     # with open(file=path, mode="rb") as f:
+#     #     obj=pickle.load(f)
+#     # print (f'Load from {path}')
 
-    pickle_obj = s3.Object(bucket_name, path)
-    pickled_docs = pickle_obj.get()['Body'].read()
-    obj = pickle.loads(pickled_docs)
-    return obj
+#     pickle_obj = s3.Object(bucket_name, path)
+#     pickled_docs = pickle_obj.get()['Body'].read()
+#     obj = pickle.loads(pickled_docs)
+#     return obj
 
-def load_llms(boto3_bedrock):
-    llm = ChatBedrock(
-        model_id=bedrock_info.get_model_id(model_name="Claude-V3-Sonnet"),
-        client=boto3_bedrock,
-        streaming=True,
-        callbacks=[StreamingStdOutCallbackHandler()],
-        model_kwargs={
-            "max_tokens": 2048,
-            "stop_sequences": ["\n\nHuman"],
-            # "temperature": 0,
-            # "top_k": 350,
-            # "top_p": 0.999
-        }
-    )
-    llm_emb = BedrockEmbeddings(
-        client=boto3_bedrock,
-        model_id=bedrock_info.get_model_id(model_name="Titan-Embeddings-G1")
-    )
-    dimension = 1536 # 1024
-    return llm, llm_emb, dimension
+# def load_llms(boto3_bedrock):
+#     llm = ChatBedrock(
+#         model_id=bedrock_info.get_model_id(model_name="Claude-V3-Sonnet"),
+#         client=boto3_bedrock,
+#         streaming=True,
+#         callbacks=[StreamingStdOutCallbackHandler()],
+#         model_kwargs={
+#             "max_tokens": 2048,
+#             "stop_sequences": ["\n\nHuman"],
+#             # "temperature": 0,
+#             # "top_k": 350,
+#             # "top_p": 0.999
+#         }
+#     )
+#     llm_emb = BedrockEmbeddings(
+#         client=boto3_bedrock,
+#         model_id=bedrock_info.get_model_id(model_name="Titan-Embeddings-G1")
+#     )
+#     dimension = 1536 # 1024
+#     return llm, llm_emb, dimension
 
-def image_to_base64(image_path):
-    with open(image_path, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read())
-    return encoded_string.decode('utf-8')
+# def image_to_base64(image_path):
+#     with open(image_path, "rb") as image_file:
+#         encoded_string = base64.b64encode(image_file.read())
+#     return encoded_string.decode('utf-8')
 
 
 # =============== HANDLER =============== #
 def lambda_handler(event, context):
 
-    boto3_bedrock = get_bedrock_client(
-        assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
-        endpoint_url=os.environ.get("BEDROCK_ENDPOINT_URL", None),
-        region=os.environ.get("AWS_DEFAULT_REGION", None),
-    )
-    llm_text, llm_emb, dimension = load_llms(boto3_bedrock)
+    # boto3_bedrock = get_bedrock_client(
+    #     assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
+    #     endpoint_url=os.environ.get("BEDROCK_ENDPOINT_URL", None),
+    #     region=os.environ.get("AWS_DEFAULT_REGION", None),
+    # )
+    # llm_text, llm_emb, dimension = load_llms(boto3_bedrock)
     
     # if os.path.isdir(image_path): shutil.rmtree(image_path)
     # os.mkdir(image_path)
@@ -238,12 +238,7 @@ def lambda_handler(event, context):
         post_processors=[clean_bullets, clean_extra_whitespace]
     )
     docs = loader.load()
-    
 
-# =============== FOR TEST =============== #
-    prompt = event['prompt']
-    response_text = llm_text.invoke(prompt) #프롬프트에 응답 반환
-    print(response_text.content)
     print("\n\n\nDONE\n")
 
     return {

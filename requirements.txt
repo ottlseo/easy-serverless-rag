@@ -1,22 +1,15 @@
-pip==24.1.1
-awscli==1.33.16
 botocore==1.34.134
 boto3==1.34.134
-sagemaker==2.224.1
 langchain==0.2.6
 langchain-community==0.2.6
 langchain_aws==0.1.8
 transformers==4.41.2
 librosa==0.10.2.post1
 sqlalchemy #==2.0.1
-pypdf==4.2.0
-anthropic==0.30.0
 jq==1.7.0
 pydantic==2.7.4
 lxml==5.2.2
 kaleido==0.2.1
 uvicorn==0.30.1
-pandas==2.2.2
 pdf2image==1.17.0
 python-dotenv==1.0.1
-pymupdf==1.24.7
