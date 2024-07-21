@@ -19,10 +19,6 @@ from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
 from pdf2image import convert_from_path
 import nltk
 
-nltk.data.path.append("/tmp/nltk_data")
-if not os.path.exists("/tmp/nltk_data/punkt"):
-    nltk.download("punkt", download_dir="/tmp/nltk_data")
-
 # S3 클라이언트 생성
 s3 = boto3.client('s3')
 
@@ -30,6 +26,11 @@ bucket_name = 'demogo-metadata-source-bucket'
 file_key = 'school_edu_guide.pdf'
 image_path = "/tmp/fig" # "./fig"
 os.makedirs(image_path, exist_ok=True)
+
+nltk.data.path.append("/tmp/nltk_data")
+# if not os.path.exists("/tmp/nltk_data/punkt"):
+nltk.download("punkt", download_dir="/tmp/nltk_data")
+nltk.download("averaged_perceptron_tagger", download_dir="/tmp/nltk_data")
 
 table_by_llama_parse = False
 table_by_pymupdf = False
@@ -100,15 +101,15 @@ def lambda_handler(event, context):
     os.mkdir(image_path)
     
     # option 1: S3 URL 가져와 URLLoader 사용하기
-    file_path = get_file_path_from_s3()
+    # file_path = get_file_path_from_s3()
     # loader = UnstructuredURLLoader(urls=[file_path],
     
     # option 2: S3 파일을 로컬로 가져와 FileLoader 사용하기
-    # file_path = get_file_from_s3_to_local()
-    # loader = UnstructuredFileLoader(file_path=file_path,
+    file_path = get_file_from_s3_to_local()
+    loader = UnstructuredFileLoader(file_path=file_path,
     
     # option 3: S3FileLoader 사용하기
-    loader = S3FileLoader(bucket=bucket_name, key=file_key,
+    # loader = S3FileLoader(bucket=bucket_name, key=file_key,
         chunking_strategy = "by_title",
         mode="elements",
         
@@ -134,7 +135,11 @@ def lambda_handler(event, context):
     docs = loader.load()
     
     test_file_key = 'parsed_unstructured.txt'
-    to_pickle(docs, test_file_key)
+    s3.put_object(
+            Bucket=bucket_name,
+            Key=test_file_key,
+            Body=str(docs)
+    )
 
     new_file_key = 'parsed_unstructured.pkl'
     to_pickle(docs, new_file_key)    
@@ -152,56 +157,56 @@ def lambda_handler(event, context):
 
     print (f' # texts: {len(texts)} \n # tables: {len(tables)} \n # images: {len(images)}') 
 
-    if table_as_image:
-        image_tmp_path = os.path.join(image_path, "tmp")
-        if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
-        os.mkdir(image_tmp_path)
+    # if table_as_image:
+    #     image_tmp_path = os.path.join(image_path, "tmp")
+    #     if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
+    #     os.mkdir(image_tmp_path)
         
-        # from pdf to image
-        pages = convert_from_path(file_path)
-        for i, page in enumerate(pages):
-            print (f'pdf page {i}, size: {page.size}')    
-            page.save(f'{image_tmp_path}/{str(i+1)}.jpg', "JPEG")
+    #     # from pdf to image
+    #     pages = convert_from_path(file_path)
+    #     for i, page in enumerate(pages):
+    #         print (f'pdf page {i}, size: {page.size}')    
+    #         page.save(f'{image_tmp_path}/{str(i+1)}.jpg', "JPEG")
 
-        print ("==")
+    #     print ("==")
 
-        #table_images = []
-        for idx, table in enumerate(tables):
-            points = table.metadata["coordinates"]["points"]
-            page_number = table.metadata["page_number"]
-            layout_width, layout_height = table.metadata["coordinates"]["layout_width"], table.metadata["coordinates"]["layout_height"]
+    #     #table_images = []
+    #     for idx, table in enumerate(tables):
+    #         points = table.metadata["coordinates"]["points"]
+    #         page_number = table.metadata["page_number"]
+    #         layout_width, layout_height = table.metadata["coordinates"]["layout_width"], table.metadata["coordinates"]["layout_height"]
 
-            img = cv2.imread(f'{image_tmp_path}/{page_number}.jpg')
-            crop_img = img[math.ceil(points[0][1]):math.ceil(points[1][1]), \
-                        math.ceil(points[0][0]):math.ceil(points[3][0])]
-            table_image_path = f'{image_path}/table-{idx}.jpg'
-            cv2.imwrite(table_image_path, crop_img)
-            #table_images.append(table_image_path)
+    #         img = cv2.imread(f'{image_tmp_path}/{page_number}.jpg')
+    #         crop_img = img[math.ceil(points[0][1]):math.ceil(points[1][1]), \
+    #                     math.ceil(points[0][0]):math.ceil(points[3][0])]
+    #         table_image_path = f'{image_path}/table-{idx}.jpg'
+    #         cv2.imwrite(table_image_path, crop_img)
+    #         #table_images.append(table_image_path)
 
-            print (f'unstructured width: {layout_width}, height: {layout_height}')
-            print (f'page_number: {page_number}')
-            print ("==")
+    #         print (f'unstructured width: {layout_width}, height: {layout_height}')
+    #         print (f'page_number: {page_number}')
+    #         print ("==")
 
-            width, height, _ = crop_img.shape
-            image_token = width*height/750
-            print (f'image: {table_image_path}, shape: {img.shape}, image_token_for_claude3: {image_token}' )
+    #         width, height, _ = crop_img.shape
+    #         image_token = width*height/750
+    #         print (f'image: {table_image_path}, shape: {img.shape}, image_token_for_claude3: {image_token}' )
 
-            ## Resize image
-            if image_token > 1500:
-                resize_img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
-                print("   - resize_img.shape = {0}".format(resize_img.shape))
-                table_image_resize_path = table_image_path.replace(".jpg", "-resize.jpg")
-                cv2.imwrite(table_image_resize_path, resize_img)
-                os.remove(table_image_path)
-                table_image_path = table_image_resize_path
+    #         ## Resize image
+    #         if image_token > 1500:
+    #             resize_img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+    #             print("   - resize_img.shape = {0}".format(resize_img.shape))
+    #             table_image_resize_path = table_image_path.replace(".jpg", "-resize.jpg")
+    #             cv2.imwrite(table_image_resize_path, resize_img)
+    #             os.remove(table_image_path)
+    #             table_image_path = table_image_resize_path
 
-            img_base64 = image_to_base64(table_image_path)
-            table.metadata["image_base64"] = img_base64
+    #         img_base64 = image_to_base64(table_image_path)
+    #         table.metadata["image_base64"] = img_base64
 
-        if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
-        #print (f'table_images: {table_images}')
-        images = glob(os.path.join(image_path, "*"))
-        print (f'images: {images}')
+    #     if os.path.isdir(image_tmp_path): shutil.rmtree(image_tmp_path)
+    #     #print (f'table_images: {table_images}')
+    #     images = glob(os.path.join(image_path, "*"))
+    #     print (f'images: {images}')
 
 
 # =============== FOR TEST =============== #
