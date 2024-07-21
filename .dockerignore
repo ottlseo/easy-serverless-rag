@@ -1,4 +1,7 @@
-rag-for-complex-docs
-rag-for-plaintext
-frontend
+bin
+lib
 test
+
+*.json
+*.md
+*.config.js
