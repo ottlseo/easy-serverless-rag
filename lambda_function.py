@@ -18,6 +18,7 @@ from langchain_community.document_loaders import UnstructuredURLLoader, Unstruct
 from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
 from pdf2image import convert_from_path
 import nltk
+from huggingface_hub import hf_hub_download
 
 # S3 클라이언트 생성
 s3 = boto3.client('s3')
@@ -31,6 +32,9 @@ nltk.data.path.append("/tmp/nltk_data")
 # if not os.path.exists("/tmp/nltk_data/punkt"):
 nltk.download("punkt", download_dir="/tmp/nltk_data")
 nltk.download("averaged_perceptron_tagger", download_dir="/tmp/nltk_data")
+
+model_name = "yolox"
+hf_hub_download(model_name, cache_dir="/tmp")
 
 table_by_llama_parse = False
 table_by_pymupdf = False
@@ -65,10 +69,11 @@ def get_file_from_s3_to_local():
     return local_file_path
 
 def to_pickle(obj, path):
-    # with open(file=path, mode="wb") as f:
-    #     pickle.dump(obj, f)
-    # print (f'To_PICKLE: {path}')
-   
+    with open(file=path, mode="wb") as f:
+        pickle.dump(obj, f)
+    print (f'To_PICKLE: {path}')
+
+def to_pickle_to_s3(obj, path):   
     pickled_docs = pickle.dumps(obj)
     s3.put_object(
         Bucket=bucket_name,
@@ -78,15 +83,15 @@ def to_pickle(obj, path):
     print(f"Pickle file uploaded to {bucket_name}/{path}")
     
 def load_pickle(path):
-    # with open(file=path, mode="rb") as f:
-    #     obj=pickle.load(f)
-    # print (f'Load from {path}')
+    with open(file=path, mode="rb") as f:
+        obj=pickle.load(f)
+    print (f'Load from {path}')
 
+def load_pickle_from_s3(path):
     pickle_obj = s3.get_object(Bucket=bucket_name, Key=path)
     pickled_docs = pickle_obj['Body'].read()
     obj = pickle.loads(pickled_docs)
     return obj
-
 
 def image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
@@ -113,9 +118,9 @@ def lambda_handler(event, context):
         chunking_strategy = "by_title",
         mode="elements",
         
-        strategy="fast", # 레이아웃 자동 검사 - 모델 사용(hi_res) 또는 미사용(fast)
-        # hi_res_model_name="yolox", # hi_res 선택 시, 사용될 모델
-        #"detectron2_onnx", "yolox", "yolox_quantized"
+        # strategy="fast", # 레이아웃 자동 검사 - 모델 사용(hi_res) 또는 미사용(fast)
+        strategy="hi_res", 
+        hi_res_model_name="yolox", # hi_res 선택 시, 사용될 모델 #"detectron2_onnx", "yolox", "yolox_quantized"
     
         extract_images_in_pdf=True, # 이미지 추출 여부
         #skip_infer_table_types='[]', # ['pdf', 'jpg', 'png', 'xls', 'xlsx', 'heic']
@@ -142,8 +147,12 @@ def lambda_handler(event, context):
     )
 
     new_file_key = 'parsed_unstructured.pkl'
-    to_pickle(docs, new_file_key)    
-    docs = load_pickle(new_file_key)
+    to_pickle_to_s3(docs, new_file_key)   
+    docs = load_pickle_from_s3(new_file_key)
+
+    # new_file_key = 'tmp/parsed_unstructured.pkl'
+    # to_pickle(docs, new_file_key)   
+    # docs = load_pickle(new_file_key)
 
     tables, texts = [], []
     images = glob(os.path.join(image_path, "*"))
