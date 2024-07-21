@@ -14,9 +14,14 @@ from langchain_community.chat_models import BedrockChat
 from langchain_aws import ChatBedrock
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.embeddings import BedrockEmbeddings
-from langchain_community.document_loaders import UnstructuredURLLoader
+from langchain_community.document_loaders import UnstructuredURLLoader, UnstructuredFileLoader, S3FileLoader
 from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
 from pdf2image import convert_from_path
+import nltk
+
+nltk.data.path.append("/tmp/nltk_data")
+if not os.path.exists("/tmp/nltk_data/punkt"):
+    nltk.download("punkt", download_dir="/tmp/nltk_data")
 
 # S3 클라이언트 생성
 s3 = boto3.client('s3')
@@ -48,7 +53,15 @@ def get_file_path_from_s3():
         Params={'Bucket': bucket_name, 'Key': file_key},
         ExpiresIn=3600  # expired time
     )
-    return s3url 
+    return s3url
+
+def get_file_from_s3_to_local():
+    response = s3.get_object(Bucket=bucket_name, Key=file_key)
+    file_content = response['Body'].read()
+    local_file_path = f'/tmp/{file_key}'
+    with open(local_file_path, 'wb') as f:
+        f.write(file_content)
+    return local_file_path
 
 def to_pickle(obj, path):
     # with open(file=path, mode="wb") as f:
@@ -68,8 +81,8 @@ def load_pickle(path):
     #     obj=pickle.load(f)
     # print (f'Load from {path}')
 
-    pickle_obj = s3.Object(bucket_name, path)
-    pickled_docs = pickle_obj.get()['Body'].read()
+    pickle_obj = s3.get_object(Bucket=bucket_name, Key=path)
+    pickled_docs = pickle_obj['Body'].read()
     obj = pickle.loads(pickled_docs)
     return obj
 
@@ -86,23 +99,29 @@ def lambda_handler(event, context):
     if os.path.isdir(image_path): shutil.rmtree(image_path)
     os.mkdir(image_path)
     
-    # S3 파일에 대한 URL 생성
+    # option 1: S3 URL 가져와 URLLoader 사용하기
     file_path = get_file_path_from_s3()
-
-    loader = UnstructuredURLLoader(
-        urls=[file_path],
+    # loader = UnstructuredURLLoader(urls=[file_path],
+    
+    # option 2: S3 파일을 로컬로 가져와 FileLoader 사용하기
+    # file_path = get_file_from_s3_to_local()
+    # loader = UnstructuredFileLoader(file_path=file_path,
+    
+    # option 3: S3FileLoader 사용하기
+    loader = S3FileLoader(bucket=bucket_name, key=file_key,
         chunking_strategy = "by_title",
         mode="elements",
+        
+        strategy="fast", # 레이아웃 자동 검사 - 모델 사용(hi_res) 또는 미사용(fast)
+        # hi_res_model_name="yolox", # hi_res 선택 시, 사용될 모델
+        #"detectron2_onnx", "yolox", "yolox_quantized"
     
-        strategy="hi_res",
-        hi_res_model_name="yolox", #"detectron2_onnx", "yolox", "yolox_quantized"
-    
-        extract_images_in_pdf=True,
+        extract_images_in_pdf=True, # 이미지 추출 여부
         #skip_infer_table_types='[]', # ['pdf', 'jpg', 'png', 'xls', 'xlsx', 'heic']
         pdf_infer_table_structure=True, ## enable to get table as html using tabletrasformer
     
-        extract_image_block_output_dir=image_path,
-        extract_image_block_to_payload=False, ## False: to save image
+        extract_image_block_to_payload=False, # 이미지를 파일로 저장할지(False) base64로 인코딩해 메타데이터화할지(True)
+        extract_image_block_output_dir=image_path, # 이미지 파일 저장 위치
     
         max_characters=4096,
         new_after_n_chars=4000,
@@ -114,8 +133,12 @@ def lambda_handler(event, context):
     )
     docs = loader.load()
     
-    to_pickle(docs, file_key)
-    docs = load_pickle(file_key)
+    test_file_key = 'parsed_unstructured.txt'
+    to_pickle(docs, test_file_key)
+
+    new_file_key = 'parsed_unstructured.pkl'
+    to_pickle(docs, new_file_key)    
+    docs = load_pickle(new_file_key)
 
     tables, texts = [], []
     images = glob(os.path.join(image_path, "*"))
