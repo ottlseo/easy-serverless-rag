@@ -3,8 +3,8 @@
 This project proposes an architecture and demo of building a multimodal RAG on AWS as a serverless and CDK. 
 
 The code of the two projects below shows how to build a multimodal RAG. 
-- [aws-bedrock-examples/.../multimodal-rag-pdf.ipynb](https://github.com/aws-samples/amazon-bedrock-samples/blob/main/rag-solutions/multimodal-rag-pdf/rag/multimodal-rag-pdf.ipynb)
-- [aws-ai-ml-workshop-kr/.../05_0_load_complex_pdf_kr_opensearch.ipynb](https://github.com/aws-samples/aws-ai-ml-workshop-kr/blob/master/genai/aws-gen-ai-kr/20_applications/02_qa_chatbot/01_preprocess_docs/05_0_load_complex_pdf_kr_opensearch.ipynb)
+- **aws-bedrock-examples Github**: [multimodal-rag-pdf.ipynb](https://github.com/aws-samples/amazon-bedrock-samples/blob/main/rag-solutions/multimodal-rag-pdf/rag/multimodal-rag-pdf.ipynb)
+- **aws-ai-ml-workshop-kr Github**: [05_0_load_complex_pdf_kr_opensearch.ipynb](https://github.com/aws-samples/aws-ai-ml-workshop-kr/blob/master/genai/aws-gen-ai-kr/20_applications/02_qa_chatbot/01_preprocess_docs/05_0_load_complex_pdf_kr_opensearch.ipynb)
 
 ## Architecture
 To make the multimodal RAG implemented in the ipynb environment above available to the application by calling them as events, this project migrate them to a serverless environment. To do this, we break the code into multiple Lambdas per module and orchestrate them using AWS Step Functions. 
