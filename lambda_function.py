@@ -1,7 +1,8 @@
 import json
 import os, sys
 import boto3
-from botocore.config import Config
+import botocore
+# from botocore.config import Config
 from typing import Optional
 import shutil
 from glob import glob
@@ -24,7 +25,6 @@ import nltk
 s3 = boto3.client('s3')
 
 bucket_name = 'demogo-metadata-source-bucket'
-file_key = 'school_edu_guide.pdf'
 image_path = "/tmp/fig" # "./fig"
 os.makedirs(image_path, exist_ok=True)
 
@@ -52,7 +52,17 @@ table_as_image = True
 # module_path = "../../.."
 # add_python_path(module_path)
 
-def get_file_path_from_s3():
+def check_if_s3_file_exist(filename):
+    try:
+        s3.head_object(Bucket=bucket_name, Key=filename)
+        return True
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        else:
+            raise e
+
+def get_file_url_from_s3(file_key):
     s3url = s3.generate_presigned_url(
         ClientMethod='get_object',
         Params={'Bucket': bucket_name, 'Key': file_key},
@@ -60,7 +70,7 @@ def get_file_path_from_s3():
     )
     return s3url
 
-def get_file_from_s3_to_local():
+def get_file_from_s3_to_local(file_key):
     response = s3.get_object(Bucket=bucket_name, Key=file_key)
     file_content = response['Body'].read()
     local_file_path = f'/tmp/{file_key}'
@@ -101,7 +111,12 @@ def image_to_base64(image_path):
 
 # =============== HANDLER =============== #
 def lambda_handler(event, context):
-
+    
+    if check_if_s3_file_exist(event['filename']): #'school_edu_guide.pdf'
+        file_key = event['filename']
+    else:
+        raise FileNotFoundError(f"file not found.")
+    
     if os.path.isdir(image_path): shutil.rmtree(image_path)
     os.mkdir(image_path)
     
@@ -110,7 +125,7 @@ def lambda_handler(event, context):
     # loader = UnstructuredURLLoader(urls=[file_path],
     
     # option 2: S3 파일을 로컬로 가져와 FileLoader 사용하기
-    file_path = get_file_from_s3_to_local()
+    file_path = get_file_from_s3_to_local(file_key)
     loader = UnstructuredFileLoader(file_path=file_path,
     
     # option 3: S3FileLoader 사용하기
