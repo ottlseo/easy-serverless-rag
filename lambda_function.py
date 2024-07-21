@@ -18,7 +18,7 @@ from langchain_community.document_loaders import UnstructuredURLLoader, Unstruct
 from unstructured.cleaners.core import clean_bullets, clean_extra_whitespace
 from pdf2image import convert_from_path
 import nltk
-from huggingface_hub import hf_hub_download
+# from huggingface_hub import hf_hub_download
 
 # S3 클라이언트 생성
 s3 = boto3.client('s3')
@@ -33,8 +33,8 @@ nltk.data.path.append("/tmp/nltk_data")
 nltk.download("punkt", download_dir="/tmp/nltk_data")
 nltk.download("averaged_perceptron_tagger", download_dir="/tmp/nltk_data")
 
-model_name = "yolox"
-hf_hub_download(model_name, cache_dir="/tmp")
+# model_name = "yolox"
+# hf_hub_download(filename=model_name, repo_id="julien-c/EsperBERTo-small", cache_dir="/tmp") # invalid
 
 table_by_llama_parse = False
 table_by_pymupdf = False
@@ -118,9 +118,9 @@ def lambda_handler(event, context):
         chunking_strategy = "by_title",
         mode="elements",
         
-        # strategy="fast", # 레이아웃 자동 검사 - 모델 사용(hi_res) 또는 미사용(fast)
-        strategy="hi_res", 
-        hi_res_model_name="yolox", # hi_res 선택 시, 사용될 모델 #"detectron2_onnx", "yolox", "yolox_quantized"
+        strategy="fast", # 레이아웃 자동 검사 - 모델 사용(hi_res) 또는 미사용(fast)
+        # strategy="hi_res", 
+        # hi_res_model_name="yolox", # hi_res 선택 시, 사용될 모델 #"detectron2_onnx", "yolox", "yolox_quantized"
     
         extract_images_in_pdf=True, # 이미지 추출 여부
         #skip_infer_table_types='[]', # ['pdf', 'jpg', 'png', 'xls', 'xlsx', 'heic']
